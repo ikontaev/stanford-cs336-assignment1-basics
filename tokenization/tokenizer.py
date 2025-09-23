@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 
-from tokenization.preprocessing import load_and_preprocess_data, pretokenize, tokenize
+from preprocessing import load_and_preprocess_data, pretokenize, tokenize
 
 
 class BPETokenizer:
