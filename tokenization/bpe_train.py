@@ -1,9 +1,45 @@
+import json
 import os
 from collections import defaultdict
-from multiprocessing import Pool
-from typing import BinaryIO
+from dataclasses import dataclass
 
-import regex as re
+from preprocessing import build_vocab, load_and_preprocess_data, pretokenize, tokenize
+
+
+@dataclass(frozen=True)
+class BPETokenizerParams:
+    """All you need to specify a BPETokenizer."""
+
+    vocab: dict[int, bytes]  # index -> bytes
+    merges: dict[tuple[int, int], int]  # index1,index2 -> new_index
+    special_tokens: list[str]  # List of special tokens (e.g., ["<|endoftext|>"])
+
+
+class BPETokenizer:
+    """BPE tokenizer given a set of merges and a vocabulary."""
+
+    def __init__(self, params: BPETokenizerParams):
+        self.params = params
+        self.vocab_index_to_token = params.vocab
+        self.vocab_token_to_index = {v: k for k, v in params.vocab.items()}
+        self.special_token_to_index = {token: i for i, token in enumerate(params.special_tokens)}
+
+    def encode(self, string: str) -> list[int]:
+        """Encode a string into token indices."""
+        tokens = pretokenize(string, self.params.special_tokens)
+        indices = tokenize(tokens, self.vocab_token_to_index, self.special_token_to_index)
+        # Note: this is a very slow implementation
+        for pair, new_index in self.params.merges.items():
+            indices = merge(indices, pair, new_index)
+        return indices
+
+    def decode(self, indices: list[int]) -> str:
+        """Decode token indices back to a string."""
+        tokens = []
+        for index in indices:
+            token_bytes = self.vocab_index_to_token.get(index, b"")
+            tokens.append(token_bytes.decode("utf-8", errors="replace"))
+        return "".join(tokens)
 
 
 def merge(indices: list[int], pair: tuple[int, int], new_index: int) -> list[int]:
@@ -25,76 +61,10 @@ def find_most_frequent_pair(indecis: list[int], vocab) -> tuple[int, int]:
     pairs_counter = defaultdict(int)
     for index1, index2 in zip(indecis, indecis[1:]):
         pairs_counter[(index1, index2)] += 1
+
     # if tie by frequency value, compare keys lexicograhically
     pair = max(pairs_counter, key=lambda k: (pairs_counter[k], vocab[k[0]]))
     return pair
-
-
-def find_chunk_boundaries(
-    file: BinaryIO,
-    desired_num_chunks: int,
-    split_special_token: bytes,
-) -> list[int]:
-    """
-    Chunk the file into parts that can be counted independently.
-    May return fewer chunks if the boundaries end up overlapping.
-    """
-    assert isinstance(split_special_token, bytes), "Must represent special token as a bytestring"
-
-    # Get total file size in bytes
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)
-
-    chunk_size = file_size // desired_num_chunks
-
-    # Initial guesses for chunk boundary locations, uniformly spaced
-    # Chunks start on previous index, don't include last index
-    chunk_boundaries = [i * chunk_size for i in range(desired_num_chunks + 1)]
-    chunk_boundaries[-1] = file_size
-
-    mini_chunk_size = 4096  # Read ahead by 4k bytes at a time
-
-    for bi in range(1, len(chunk_boundaries) - 1):
-        initial_position = chunk_boundaries[bi]
-        file.seek(initial_position)  # Start at boundary guess
-        while True:
-            mini_chunk = file.read(mini_chunk_size)  # Read a mini chunk
-
-            # If EOF, this boundary should be at the end of the file
-            if mini_chunk == b"":
-                chunk_boundaries[bi] = file_size
-                break
-
-            # Find the special token in the mini chunk
-            found_at = mini_chunk.find(split_special_token)
-            if found_at != -1:
-                chunk_boundaries[bi] = initial_position + found_at
-                break
-            initial_position += mini_chunk_size
-
-    # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
-    return sorted(set(chunk_boundaries))
-
-
-def pretokenize(chunk: str, special_token: str) -> list[int]:
-    """Preprocess the raw chunk of text and map each token to UTF-8 byte representation."""
-    texts = re.split(rf"\s*{re.escape(special_token)}\s*", chunk)
-    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-    chunk_indecis = []
-    for text in texts:
-        tokens = re.finditer(PAT, text)
-        for token in tokens:
-            token_bytes = list(map(int, token.group().encode("utf-8")))
-            chunk_indecis.extend(token_bytes)
-    return chunk_indecis
-
-
-def build_vocab(special_tokens: list[str]) -> dict[int, bytes]:
-    vocab: dict[int, bytes] = {i: token.encode("utf-8") for i, token in enumerate(special_tokens)}
-    for x in range(1, 256):
-        vocab[x] = bytes([x])
-    return vocab
 
 
 def train_bpe(
@@ -125,32 +95,75 @@ def train_bpe(
                 Merges are ordered by order of creation.
     """
 
-    with open(input_path, "rb") as f:
-        num_processes = 4
-        end_of_text = "<|endoftext|>"
-        boundaries = find_chunk_boundaries(f, num_processes, end_of_text.encode("utf-8"))
-        # The following is a serial implementation, but you can parallelize this
-        # by sending each start/end pair to a set of processes.
-        indecis = []
-        for start, end in zip(boundaries[:-1], boundaries[1:]):
-            f.seek(start)
-            chunk = f.read(end - start).decode("utf-8", errors="ignore")
-            chunk_indecis = pretokenize(chunk, special_token=end_of_text)
-            indecis.extend(chunk_indecis)
-
-        merges: dict[tuple[int, int], int] = {}  # index1, index2 => merged_index
-        vocab = build_vocab(special_tokens)
-        iterations = vocab_size - len(vocab)
-        for i in range(iterations):
-            index1, index2 = find_most_frequent_pair(indecis, vocab)
-            # merge
-            new_index = 256 + i
-            merges[(index1, index2)] = new_index
-            indecis = merge(indecis, (index1, index2), new_index)
-            vocab[new_index] = vocab[index1] + vocab[index2]
-        bytes_merges = [(vocab[x], vocab[y]) for x, y in list(merges.keys())]
-        return vocab, bytes_merges
+    vocab_index_to_token = build_vocab(special_tokens)
+    indecis = load_and_preprocess_data(input_path, special_tokens, vocab_index_to_token)
+    merges: dict[tuple[int, int], int] = {}  # index1, index2 => merged_index
+    iterations = vocab_size - len(vocab_index_to_token)
+    for i in range(iterations + 1):
+        index1, index2 = find_most_frequent_pair(indecis, vocab_index_to_token)
+        new_index = 256 + i
+        merges[(index1, index2)] = new_index
+        vocab_index_to_token[new_index] = vocab_index_to_token[index1] + vocab_index_to_token[index2]
+        indecis = merge(indecis, (index1, index2), new_index)
+    return vocab_index_to_token, merges
 
 
-# train_bpe("./data/TinyStoriesV2-GPT4-valid.txt", 500, ["<|endoftext|>"])
-print(train_bpe("./tests/fixtures/tinystories_sample.txt", 500, ["<|endoftextg|>"]))
+def bytes_to_str(b: bytes) -> str:
+    try:
+        return b.decode("utf-8")
+    except UnicodeDecodeError:
+        return b.hex()
+
+
+def save_vocab(filename, vocab):
+    vocab_inv = {}
+    for k, v in vocab.items():
+        key_str = bytes_to_str(v)
+        vocab_inv[key_str] = k
+
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(vocab_inv, f, indent=4, ensure_ascii=False)
+
+
+def save_merges(path: str, merges: list[tuple[bytes, bytes]], vocab: dict[int, bytes]):
+    with open(path, "w") as f:
+        for i, (token1, token2) in enumerate(merges):
+            f.write(f"{i}: {bytes_to_str(vocab[token1])} {bytes_to_str(vocab[token2])}\n")
+
+
+def main():
+    """Performance comparison between different BPE implementations."""
+    import cProfile
+    import time
+
+    # input_file = "./data/fake_file.txt"
+    # input_file = "./tests/fixtures/corpus.en"
+    # input_file = "./tests/fixtures/german.txt"
+    input_file = "./tests/fixtures/tinystories_sample.txt"
+    # input_file = "./data/TinyStoriesV2-GPT4-valid.txt"
+    vocab_size = 500
+    special_tokens = ["<|endoftext|>"]
+    # special_tokens = []
+    #
+    profiler_naive = cProfile.Profile()
+    start_time = time.time()
+    #
+    profiler_naive.enable()
+    vocab_naive, merges_naive = train_bpe(input_file, vocab_size, special_tokens)
+    profiler_naive.disable()
+    #
+    naive_time = time.time() - start_time
+    print(f"Naive implementation time: {naive_time:.3f} seconds")
+    # vocab = {k: v.decode("utf-8") for k, v in vocab_naive.items()}
+    bpe_tokenizer_naive = BPETokenizer(BPETokenizerParams(vocab_naive, merges_naive, special_tokens))
+    string = "the quick fox jump over grumpy dog <|endoftext|> hello again"
+    tokens = bpe_tokenizer_naive.encode(string)
+    print(tokens)
+    print(bpe_tokenizer_naive.decode(tokens))
+
+    save_merges("./dump/corpus_merges_naive.txt", merges_naive, vocab_naive)
+    save_vocab("./dump/corpus_vocab_naive.json", vocab_naive)
+
+
+if __name__ == "__main__":
+    main()

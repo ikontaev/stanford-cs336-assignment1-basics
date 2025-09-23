@@ -44,10 +44,6 @@ def find_most_frequent_pair(indecis: list[int], vocab) -> tuple[int, int]:
     return pair
 
 
-def decode(indecis, vocab):
-    return b" ".join([vocab[index] for index in indecis]).decode("utf-8")
-
-
 def naive_bpe(f: StringIO, vocab_size: int):
     indecis = []
     merges: dict[tuple[int, int], int] = {}  # index1, index2 => merged_index
@@ -55,20 +51,23 @@ def naive_bpe(f: StringIO, vocab_size: int):
     vocab: dict[int, bytes] = {x: bytes([x]) for x in range(1, 256)}
     vocab[0] = b"<|endoftext|>"
 
+    all_tokens = []
     for line in f:
         for word in line.split():
+            all_tokens.append(word.encode("utf-8"))
             word_bytes = list(map(int, word.encode("utf-8")))
             indecis.extend(word_bytes)
-
+    print(f"tokens:{all_tokens}")
     iterations = vocab_size - len(vocab)
     for i in range(iterations):
         index1, index2 = find_most_frequent_pair(indecis, vocab)
         # merge
         new_index = 256 + i
         merges[(index1, index2)] = new_index
-        indecis = merge(indecis, (index1, index2), new_index)
         vocab[new_index] = vocab[index1] + vocab[index2]
+        indecis = merge(indecis, (index1, index2), new_index)
 
+    bytes_merges = [(vocab[x], vocab[y]) for x, y in list(merges.keys())]
     return BPETokenizerParams(vocab, merges)
 
 
