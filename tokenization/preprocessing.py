@@ -57,7 +57,9 @@ def pretokenize(chunk: str, special_tokens: list[str]) -> list[str | bytes]:
     if not special_tokens:
         texts = [chunk]
     else:
-        delimiter = "|".join(map(re.escape, special_tokens))
+        # Sort special tokens by length (longest first) to handle overlapping tokens correctly
+        sorted_special_tokens = sorted(special_tokens, key=len, reverse=True)
+        delimiter = "|".join(map(re.escape, sorted_special_tokens))
         texts = re.split(rf"({delimiter})", chunk)  # Keep delimiters
 
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
