@@ -9,9 +9,9 @@ def compare_tokenizers():
     import time
 
     # Test parameters
-    input_file = "./tests/fixtures/corpus.en"
-    # input_file = "./data/TinyStoriesV2-GPT4-valid.txt"
-    vocab_size = 500
+    # input_file = "./tests/fixtures/corpus.en"
+    input_file = "./data/TinyStoriesV2-GPT4-valid.txt"
+    vocab_size = 1000  # Reduced for faster profiling
     special_tokens = ["<|endoftext|>"]
     test_string = "the quick fox jump over grumpy dog <|endoftext|> hello again"
 
@@ -24,18 +24,18 @@ def compare_tokenizers():
     print()
 
     # Train naive implementation
-    print("Training naive BPE tokenizer...")
-    profiler_naive = cProfile.Profile()
-    start_time = time.time()
-    profiler_naive.enable()
-    bpe_tokenizer_naive = Tokenizer.train(input_file, vocab_size, special_tokens)
-    vocab_naive, merges_naive = bpe_tokenizer_naive.vocab, bpe_tokenizer_naive.merges
-    profiler_naive.disable()
-    naive_time = time.time() - start_time
-    print(f"Naive implementation time: {naive_time:.3f} seconds")
+    # print("Training naive BPE tokenizer...")
+    # profiler_naive = cProfile.Profile()
+    # start_time = time.time()
+    # profiler_naive.enable()
+    # bpe_tokenizer_naive = Tokenizer.train(input_file, vocab_size, special_tokens)
+    # vocab_naive, merges_naive = bpe_tokenizer_naive.vocab, bpe_tokenizer_naive.merges
+    # profiler_naive.disable()
+    # naive_time = time.time() - start_time
+    # print(f"Naive implementation time: {naive_time:.3f} seconds")
 
     # Train optimized implementation
-    print("\nTraining optimized optimized BPE tokenizer...")
+    print("\nTraining optimized BPE tokenizer...")
     profiler_optimized = cProfile.Profile()
     start_time = time.time()
     profiler_optimized.enable()
@@ -45,9 +45,41 @@ def compare_tokenizers():
     optimized_time = time.time() - start_time
     print(f"Simple optimized implementation time: {optimized_time:.3f} seconds")
 
+    # Detailed profiling analysis
+    print("\n" + "=" * 60)
+    print("DETAILED PROFILING ANALYSIS")
+    print("=" * 60)
+
+    import io
+    import pstats
+
+    # Top functions by cumulative time
+    s = io.StringIO()
+    ps = pstats.Stats(profiler_optimized, stream=s)
+    ps.sort_stats("cumulative")
+    ps.print_stats(15)
+    print("Top 15 functions by cumulative time:")
+    print(s.getvalue())
+
+    # Focus on tokenizer methods
+    print("\nTokenizer-specific methods:")
+    s = io.StringIO()
+    ps = pstats.Stats(profiler_optimized, stream=s)
+    ps.sort_stats("cumulative")
+    ps.print_stats("tokenizer")
+    print(s.getvalue())
+
+    # Top functions by total time
+    print("\nTop 10 functions by total time:")
+    s = io.StringIO()
+    ps = pstats.Stats(profiler_optimized, stream=s)
+    ps.sort_stats("tottime")
+    ps.print_stats(10)
+    print(s.getvalue())
+
     # Performance comparison
     # print("Performance improvements:")
-    print(f"  Optimized: {naive_time / optimized_time:.2f}x faster than naive")
+    # print(f"  Optimized: {naive_time / optimized_time:.2f}x faster than naive")
 
     # Test encoding/decoding functionality
     print("\n" + "=" * 60)
@@ -56,11 +88,11 @@ def compare_tokenizers():
     print(f"Test string: '{test_string}'")
 
     # Test naive tokenizer
-    tokens_naive = bpe_tokenizer_naive.encode(test_string)
-    decoded_naive = bpe_tokenizer_naive.decode(tokens_naive)
-    print("Naive tokenizer:")
-    print(f"  Tokens: {tokens_naive}")
-    print(f"  Decoded: '{decoded_naive}'")
+    # tokens_naive = bpe_tokenizer_naive.encode(test_string)
+    # decoded_naive = bpe_tokenizer_naive.decode(tokens_naive)
+    # print("Naive tokenizer:")
+    # print(f"  Tokens: {tokens_naive}")
+    # print(f"  Decoded: '{decoded_naive}'")
 
     # Test optimized tokenizer
     tokens_optimized = bpe_tokenizer_optimized.encode(test_string)
@@ -70,28 +102,26 @@ def compare_tokenizers():
     print(f"  Decoded: '{decoded_optimized}'")
 
     # Compare vocabularies and merges
-    print("\n" + "=" * 60)
-    print("Vocabulary and Merges Comparison")
-    print("=" * 60)
+    # print("\n" + "=" * 60)
+    # print("Vocabulary and Merges Comparison")
+    # print("=" * 60)
 
     # Compare naive vs optimized optimized
-    print("Naive vs Optimized:")
-    vocab_match_optimized = vocab_naive == vocab_optimized
-    merges_match_optimized = merges_naive == merges_optimized
-    tokens_match_optimized = tokens_naive == tokens_optimized
-    decode_match_optimized = decoded_naive == decoded_optimized
-
-    print(f"  Vocabularies match: {vocab_match_optimized}")
-    print(f"  Merges match: {merges_match_optimized}")
-    print(f"  Tokenization results match: {tokens_match_optimized}")
-    print(f"  Decoded strings match: {decode_match_optimized}")
+    # print("Naive vs Optimized:")
+    # vocab_match_optimized = vocab_naive == vocab_optimized
+    # merges_match_optimized = merges_naive == merges_optimized
+    # tokens_match_optimized = tokens_naive == tokens_optimized
+    # decode_match_optimized = decoded_naive == decoded_optimized
+    #
+    # print(f"  Vocabularies match: {vocab_match_optimized}")
+    # print(f"  Merges match: {merges_match_optimized}")
+    # print(f"  Tokenization results match: {tokens_match_optimized}")
+    # print(f"  Decoded strings match: {decode_match_optimized}")
 
     # Save outputs for inspection
     print("\nSaving outputs...")
-    save_merges("./dump/corpus_merges_naive.txt", merges_naive)
-    save_vocab("./dump/corpus_vocab_naive.json", vocab_naive)
-    save_merges("./dump/corpus_merges_optimized.txt", merges_optimized)
-    save_vocab("./dump/corpus_vocab_optimized.json", vocab_optimized)
+    save_merges("./dump/tinystoriew_val_merges_optimized.txt", merges_optimized)
+    save_vocab("./dump/tinystoriew_val_merges_optimized.json", vocab_optimized)
 
 
 def main():

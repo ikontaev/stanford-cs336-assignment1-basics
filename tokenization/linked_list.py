@@ -1,10 +1,16 @@
 class ListNode:
     """Node for doubly linked list representation of token sequence."""
 
+    _id_counter = 0
+
     def __init__(self, token: int):
         self.token = token
         self.prev: ListNode | None = None
         self.next: ListNode | None = None
+
+        # Assign unique integer ID for fast hashing
+        ListNode._id_counter += 1
+        self.id = ListNode._id_counter
 
     def __repr__(self):
         return f"Node({self.token})"
