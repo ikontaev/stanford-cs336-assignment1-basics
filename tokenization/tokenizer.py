@@ -38,7 +38,6 @@ class BPETokenizer:
         """Encode a string into token indices."""
         tokens = pretokenize(string, self.special_tokens)
         indices = tokenize(tokens, self.vocab_token_to_index, self.special_token_to_index)
-        raw_indices_len = len(indices)
         # Apply merges in order. Merged tokens start at index 256
         for i, (token1_bytes, token2_bytes) in enumerate(self.merges):
             new_index = 256 + i
@@ -46,7 +45,6 @@ class BPETokenizer:
             token2_idx = self.vocab_token_to_index[token2_bytes]
 
             indices = self.merge(indices, (token1_idx, token2_idx), new_index)
-        print(f"compression ratio:{raw_indices_len / len(indices)}")
         return indices
 
     def decode(self, indices: list[int]) -> str:

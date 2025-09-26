@@ -10,6 +10,7 @@ def compare_tokenizers():
 
     # Test parameters
     input_file = "./tests/fixtures/corpus.en"
+    # input_file = "./data/TinyStoriesV2-GPT4-valid.txt"
     vocab_size = 500
     special_tokens = ["<|endoftext|>"]
     test_string = "the quick fox jump over grumpy dog <|endoftext|> hello again"
@@ -45,7 +46,7 @@ def compare_tokenizers():
     print(f"Simple optimized implementation time: {optimized_time:.3f} seconds")
 
     # Performance comparison
-    print("Performance improvements:")
+    # print("Performance improvements:")
     print(f"  Optimized: {naive_time / optimized_time:.2f}x faster than naive")
 
     # Test encoding/decoding functionality
@@ -87,9 +88,9 @@ def compare_tokenizers():
 
     # Save outputs for inspection
     print("\nSaving outputs...")
-    save_merges("./dump/corpus_merges_naive.txt", merges_naive, vocab_naive)
+    save_merges("./dump/corpus_merges_naive.txt", merges_naive)
     save_vocab("./dump/corpus_vocab_naive.json", vocab_naive)
-    save_merges("./dump/corpus_merges_optimized.txt", merges_optimized, vocab_optimized)
+    save_merges("./dump/corpus_merges_optimized.txt", merges_optimized)
     save_vocab("./dump/corpus_vocab_optimized.json", vocab_optimized)
 
 
