@@ -1,5 +1,5 @@
-from tokenizer import BPETokenizer
-from tokenizer_optimized import BPETokenizerOptimized
+from tokenizer import Tokenizer
+from tokenizer_optimized import TokenizerOptimized
 from utils import save_merges, save_vocab
 
 
@@ -28,7 +28,7 @@ def compare_tokenizers():
     profiler_naive = cProfile.Profile()
     start_time = time.time()
     profiler_naive.enable()
-    bpe_tokenizer_naive = BPETokenizer.train(input_file, vocab_size, special_tokens)
+    bpe_tokenizer_naive = Tokenizer.train(input_file, vocab_size, special_tokens)
     vocab_naive, merges_naive = bpe_tokenizer_naive.vocab, bpe_tokenizer_naive.merges
     profiler_naive.disable()
     naive_time = time.time() - start_time
@@ -39,7 +39,7 @@ def compare_tokenizers():
     profiler_optimized = cProfile.Profile()
     start_time = time.time()
     profiler_optimized.enable()
-    bpe_tokenizer_optimized = BPETokenizerOptimized.train(input_file, vocab_size, special_tokens)
+    bpe_tokenizer_optimized = TokenizerOptimized.train(input_file, vocab_size, special_tokens)
     vocab_optimized, merges_optimized = bpe_tokenizer_optimized.vocab, bpe_tokenizer_optimized.merges
     profiler_optimized.disable()
     optimized_time = time.time() - start_time
