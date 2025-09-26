@@ -107,10 +107,3 @@ def load_and_preprocess_data(
             indecis.extend(chunk_indecis)
 
     return indecis
-
-
-def build_vocab(special_tokens: list[str]) -> dict[int, bytes]:
-    vocab_index_to_token: dict[int, bytes] = {i: token.encode("utf-8") for i, token in enumerate(special_tokens)}
-    for i in range(len(special_tokens), 256):
-        vocab_index_to_token[i] = bytes([i])
-    return vocab_index_to_token

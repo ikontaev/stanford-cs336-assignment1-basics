@@ -38,24 +38,21 @@ class BPETokenizer:
         """Encode a string into token indices."""
         tokens = pretokenize(string, self.special_tokens)
         indices = tokenize(tokens, self.vocab_token_to_index, self.special_token_to_index)
-        # Apply merges in order - merged tokens start at index 256
+        raw_indices_len = len(indices)
+        # Apply merges in order. Merged tokens start at index 256
         for i, (token1_bytes, token2_bytes) in enumerate(self.merges):
-            # The merged token was created as the i-th merge, starting at 256
             new_index = 256 + i
-            # Find the original token indices
             token1_idx = self.vocab_token_to_index[token1_bytes]
             token2_idx = self.vocab_token_to_index[token2_bytes]
 
             indices = self.merge(indices, (token1_idx, token2_idx), new_index)
+        print(f"compression ratio:{raw_indices_len / len(indices)}")
         return indices
 
     def decode(self, indices: list[int]) -> str:
         """Decode token indices back to a string."""
-        all_bytes = b""
-        for index in indices:
-            token_bytes = self.vocab.get(index, b"")
-            all_bytes += token_bytes
-        return all_bytes.decode("utf-8", errors="replace")
+        tokens = b"".join(self.vocab.get(index, b"") for index in indices)
+        return tokens.decode("utf-8", errors="replace")
 
     @staticmethod
     def build_vocab(special_tokens: list[str]) -> dict[int, bytes]:
@@ -113,12 +110,11 @@ class BPETokenizer:
         Returns:
             BPETokenizer
         """
-
         vocab_index_to_token = BPETokenizer.build_vocab(special_tokens)
         indecis = load_and_preprocess_data(input_path, special_tokens, vocab_index_to_token)
         special_token_ids = set([i for i, _ in enumerate(special_tokens)])
         merge_dict: dict[tuple[int, int], int] = {}  # index1, index2 => merged_index
-        iterations = vocab_size - len(vocab_index_to_token)
+        iterations = vocab_size - 256
         for i in range(iterations):
             index1, index2 = BPETokenizer.find_most_frequent_pair(indecis, vocab_index_to_token, special_token_ids)
             new_index = 256 + i
