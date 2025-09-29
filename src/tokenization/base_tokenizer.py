@@ -1,12 +1,8 @@
-"""
-Base tokenizer classes providing common functionality and interfaces.
-"""
-
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 
-from tokenization.preprocessing import pretokenize, tokenize
+from .preprocessing import pretokenize, tokenize
 
 
 class BaseTokenizer(ABC):
@@ -159,4 +155,3 @@ class BaseTokenizer(ABC):
             Trained tokenizer instance
         """
         pass
-

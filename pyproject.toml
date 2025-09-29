@@ -22,12 +22,13 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.8.3,<0.9.0"]
-build-backend = "uv_build"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.uv.build-backend]
-module-name = "cs336_basics"
-module-root = ""
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.uv]
 package = true

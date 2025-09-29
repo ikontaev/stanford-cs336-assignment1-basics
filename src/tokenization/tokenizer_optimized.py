@@ -2,11 +2,10 @@ import heapq
 import os
 from collections import defaultdict
 
+from .base_tokenizer import BaseTokenizer
+from .linked_list import DoublyLinkedList, ListNode
+from .preprocessing import load_and_preprocess_data
 from tqdm import tqdm
-
-from tokenization.base_tokenizer import BaseTokenizer
-from tokenization.linked_list import DoublyLinkedList, ListNode
-from tokenization.preprocessing import load_and_preprocess_data
 
 
 class TokenizerOptimized(BaseTokenizer):

@@ -1,6 +1,6 @@
-from tokenizer import Tokenizer
-from tokenizer_optimized import TokenizerOptimized
-from utils import save_merges, save_vocab
+from tokenization.tokenizer import Tokenizer
+from tokenization.tokenizer_optimized import TokenizerOptimized
+from tokenization.utils import save_merges, save_vocab
 
 
 def compare_tokenizers():
@@ -10,8 +10,9 @@ def compare_tokenizers():
 
     # Test parameters
     # input_file = "./tests/fixtures/corpus.en"
-    input_file = "./data/TinyStoriesV2-GPT4-valid.txt"
-    vocab_size = 1000  # Reduced for faster profiling
+    # input_file = "./data/TinyStoriesV2-GPT4-valid.txt"
+    input_file = "./data/TinyStoriesV2-GPT4-train.txt"
+    vocab_size = 10000  # Reduced for faster profiling
     special_tokens = ["<|endoftext|>"]
     test_string = "the quick fox jump over grumpy dog <|endoftext|> hello again"
 
@@ -76,18 +77,18 @@ def compare_tokenizers():
     ps.sort_stats("tottime")
     ps.print_stats(10)
     print(s.getvalue())
-
-    # Performance comparison
+    #
+    # # Performance comparison
     # print("Performance improvements:")
     # print(f"  Optimized: {naive_time / optimized_time:.2f}x faster than naive")
 
-    # Test encoding/decoding functionality
-    print("\n" + "=" * 60)
-    print("Functionality Test")
-    print("=" * 60)
-    print(f"Test string: '{test_string}'")
-
-    # Test naive tokenizer
+    # # Test encoding/decoding functionality
+    # print("\n" + "=" * 60)
+    # print("Functionality Test")
+    # print("=" * 60)
+    # print(f"Test string: '{test_string}'")
+    #
+    # # Test naive tokenizer
     # tokens_naive = bpe_tokenizer_naive.encode(test_string)
     # decoded_naive = bpe_tokenizer_naive.decode(tokens_naive)
     # print("Naive tokenizer:")
@@ -112,7 +113,7 @@ def compare_tokenizers():
     # merges_match_optimized = merges_naive == merges_optimized
     # tokens_match_optimized = tokens_naive == tokens_optimized
     # decode_match_optimized = decoded_naive == decoded_optimized
-    #
+    # #
     # print(f"  Vocabularies match: {vocab_match_optimized}")
     # print(f"  Merges match: {merges_match_optimized}")
     # print(f"  Tokenization results match: {tokens_match_optimized}")
@@ -120,8 +121,8 @@ def compare_tokenizers():
 
     # Save outputs for inspection
     print("\nSaving outputs...")
-    save_merges("./dump/tinystoriew_val_merges_optimized.txt", merges_optimized)
-    save_vocab("./dump/tinystoriew_val_merges_optimized.json", vocab_optimized)
+    save_merges("./dump/tinystoriew_train_merges_optimized.txt", merges_optimized)
+    save_vocab("./dump/tinystoriew_train_merges_optimized.json", vocab_optimized)
 
 
 def main():

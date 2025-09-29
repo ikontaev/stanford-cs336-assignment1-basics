@@ -1,7 +1,8 @@
 import os
 
-from tokenization.base_tokenizer import BaseTokenizer
-from tokenization.preprocessing import load_and_preprocess_data
+from .base_tokenizer import BaseTokenizer
+from .preprocessing import load_and_preprocess_data
+from tqdm import tqdm
 
 
 class Tokenizer(BaseTokenizer):
@@ -47,7 +48,7 @@ class Tokenizer(BaseTokenizer):
         special_token_ids = set([i for i, _ in enumerate(special_tokens)])
         merge_dict: dict[tuple[int, int], int] = {}  # index1, index2 => merged_index
         iterations = vocab_size - 256
-        for i in range(iterations):
+        for i in tqdm(range(iterations)):
             index1, index2 = cls._find_most_frequent_pair(indecis, vocab_index_to_token, special_token_ids)
             new_index = 256 + i
             merge_dict[(index1, index2)] = new_index
